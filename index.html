@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citi Bike Transportation Intelligence Platform</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--cb-blue:#003DA5;--cb-blue-mid:#0052CC;--cb-blue-light:#1A6FE8;--cb-orange:#F26522;--cb-orange-light:#FF8A4C;--bg:#F0F4FA;--surface:#FFFFFF;--surface2:#F7F9FD;--border:#DDE3EE;--text-primary:#0A1628;--text-secondary:#4A5878;--text-muted:#8A94A6;--green:#1DB87E;--gray:#CBD5E0;--sidebar-w:220px;--header-h:64px;--nav-h:44px;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text-primary);min-height:100vh;overflow-x:hidden;}
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-h);background:var(--cb-blue);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:200;box-shadow:0 2px 16px rgba(0,61,165,.25);}
+.header-left{display:flex;align-items:center;gap:12px;}
+.header-logo{width:36px;height:36px;border-radius:8px;background:var(--cb-orange);display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;color:#fff;font-size:13px;flex-shrink:0;}
+.header-title h1{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;}
+.header-title p{font-size:11px;color:rgba(255,255,255,.6);margin-top:1px;}
+.header-right{display:flex;align-items:center;gap:10px;}
+.colab-btn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:7px 13px;border-radius:8px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none;transition:background .2s;}
+.colab-btn:hover{background:rgba(255,255,255,0.2);}
+.colab-btn svg{width:16px;height:16px;flex-shrink:0;}
+.nav-tabs{position:fixed;top:var(--header-h);left:0;right:0;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:2px;z-index:199;height:var(--nav-h);box-shadow:0 1px 6px rgba(0,0,0,.06);overflow-x:auto;}
+.nav-tab{padding:0 14px;height:var(--nav-h);display:flex;align-items:center;font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;gap:6px;flex-shrink:0;}
+.nav-tab:hover{color:var(--cb-blue);}
+.nav-tab.active{color:var(--cb-blue);border-bottom-color:var(--cb-orange);font-weight:700;}
+.tab-num{background:var(--cb-blue);color:#fff;width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;}
+.nav-tab.active .tab-num{background:var(--cb-orange);}
+.layout{display:flex;margin-top:calc(var(--header-h) + var(--nav-h));min-height:calc(100vh - var(--header-h) - var(--nav-h));}
+.sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:16px 12px;position:sticky;top:calc(var(--header-h) + var(--nav-h));height:calc(100vh - var(--header-h) - var(--nav-h));overflow-y:auto;}
+.sidebar-title{font-size:10px;font-weight:700;letter-spacing:1.2px;color:var(--text-muted);text-transform:uppercase;padding:0 4px;margin-bottom:12px;}
+.filter-group{margin-bottom:13px;}
+.filter-label{font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block;}
+.filter-select{width:100%;padding:7px 28px 7px 9px;border:1px solid var(--border);border-radius:7px;font-size:11px;font-family:inherit;background:var(--surface2);color:var(--text-primary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234A5878'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;}
+.filter-select:focus{outline:none;border-color:var(--cb-blue);}
+.filter-divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+.sidebar-stat{padding:9px;background:var(--surface2);border-radius:8px;margin-bottom:7px;}
+.ss-label{font-size:10px;color:var(--text-muted);margin-bottom:2px;}
+.ss-value{font-size:15px;font-weight:700;color:var(--cb-blue);font-family:'Space Mono',monospace;}
+.main{flex:1;padding:18px;overflow-x:hidden;min-width:0;}
+.page{display:none;}.page.active{display:block;}
+.page-header{margin-bottom:18px;}
+.page-header h2{font-size:19px;font-weight:700;}
+.page-header p{font-size:12px;color:var(--text-secondary);margin-top:3px;}
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px;}
+.kpi-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.kpi-card{background:var(--surface);border-radius:11px;padding:14px;border:1px solid var(--border);transition:transform .15s,box-shadow .15s;position:relative;overflow:hidden;}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--cb-blue),var(--cb-blue-light));}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,61,165,.1);}
+.kpi-card.orange::before{background:linear-gradient(90deg,var(--cb-orange),var(--cb-orange-light));}
+.kpi-card.orange .kpi-value{color:var(--cb-orange);}
+.kpi-card.green::before{background:linear-gradient(90deg,var(--green),#34D399);}
+.kpi-card.green .kpi-value{color:var(--green);}
+.kpi-icon{font-size:16px;margin-bottom:7px;}
+.kpi-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px;}
+.kpi-value{font-size:20px;font-weight:700;color:var(--cb-blue);font-family:'Space Mono',monospace;line-height:1;}
+.kpi-context{font-size:11px;color:var(--text-muted);margin-top:5px;line-height:1.4;}
+.kpi-trend{font-size:11px;font-weight:600;color:var(--green);margin-top:3px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
+.grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px;}
+.grid-3-2{display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-bottom:14px;}
+.span-2{grid-column:span 2;}
+.chart-card{background:var(--surface);border-radius:11px;padding:16px;border:1px solid var(--border);}
+.cc-header{margin-bottom:12px;}
+.cc-title{font-size:13px;font-weight:700;color:var(--text-primary);}
+.cc-sub{font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.5;}
+.insights-panel{background:linear-gradient(135deg,var(--cb-blue) 0%,var(--cb-blue-mid) 100%);border-radius:11px;padding:16px;color:#fff;}
+.insights-panel h3{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.65;margin-bottom:12px;}
+.insight-item{display:flex;gap:9px;margin-bottom:9px;align-items:flex-start;}
+.insight-dot{width:5px;height:5px;border-radius:50%;background:var(--cb-orange);flex-shrink:0;margin-top:5px;}
+.insight-item p{font-size:11px;line-height:1.5;opacity:.92;}
+.data-table{width:100%;border-collapse:collapse;font-size:11px;}
+.data-table th{background:var(--surface2);padding:8px 10px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);}
+.data-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-secondary);vertical-align:middle;}
+.data-table tr:hover td{background:var(--surface2);}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:9px;font-weight:700;}
+.r1{background:var(--cb-orange);color:#fff;}.r2{background:#CBD5E0;color:var(--text-primary);}.r3{background:#E2D3B4;color:var(--text-primary);}.rn{background:var(--surface2);color:var(--text-muted);}
+.footer{text-align:center;padding:14px;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);margin-top:10px;background:var(--surface);}
+@media(max-width:1300px){.kpi-row{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:1100px){.grid-3{grid-template-columns:1fr 1fr;}.grid-3-2{grid-template-columns:1fr;}.span-2{grid-column:span 1;}}
+@media(max-width:900px){.sidebar{display:none;}.kpi-row{grid-template-columns:repeat(2,1fr);}.kpi-row-3{grid-template-columns:repeat(2,1fr);}.grid-2,.grid-2-1,.grid-3-2{grid-template-columns:1fr;}.grid-3{grid-template-columns:1fr;}.span-2{grid-column:span 1;}.header-title p{display:none;}.colab-btn span{display:none;}}
+@media(max-width:600px){.kpi-row,.kpi-row-3{grid-template-columns:1fr 1fr;}.header-title h1{font-size:12px;}.main{padding:10px;}}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo">CB</div>
+    <div class="header-title">
+      <h1>Citi Bike Transportation Intelligence Dashboard</h1>
+      <p>Big Data &amp; Mobility Analytics Platform</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <a class="colab-btn" href="https://colab.research.google.com/drive/1x0aJNixBuw6rezrlGRm08PUWb28ZrF0s?usp=sharing" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" fill="#F9AB00"/><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10" stroke="#fff" stroke-width="1.5"/><path d="M9 8l6 4-6 4V8z" fill="#fff"/></svg>
+      <span>View Notebook</span>
+    </a>
+  </div>
+</header>
+<nav class="nav-tabs">
+  <div class="nav-tab active" onclick="showPage(0)" id="tab-0">📊 Executive Overview <span class="tab-num">1</span></div>
+  <div class="nav-tab" onclick="showPage(1)" id="tab-1">📍 Station Intelligence <span class="tab-num">2</span></div>
+  <div class="nav-tab" onclick="showPage(2)" id="tab-2">👥 User Behavior Analytics <span class="tab-num">3</span></div>
+  <div class="nav-tab" onclick="showPage(3)" id="tab-3">⚙️ Operations &amp; Maintenance <span class="tab-num">4</span></div>
+</nav>
+<div class="layout">
+<aside class="sidebar">
+  <div class="sidebar-title">Global Filters</div>
+  <div class="filter-group"><label class="filter-label">User Type</label>
+    <select class="filter-select" id="f-usertype" onchange="applyFilters()">
+      <option value="all">All Users</option><option value="Subscriber">Subscriber</option><option value="Customer">Customer</option>
+    </select></div>
+  <div class="filter-group"><label class="filter-label">Gender</label>
+    <select class="filter-select" id="f-gender" onchange="applyFilters()">
+      <option value="all">All Genders</option><option value="Male">Male</option><option value="Female">Female</option>
+    </select></div>
+  <div class="filter-group"><label class="filter-label">Season</label>
+    <select class="filter-select" id="f-season" onchange="applyFilters()">
+      <option value="all">All Seasons</option><option value="Summer">Summer (Jun–Aug)</option><option value="Autumn">Autumn (Sep–Nov)</option><option value="Spring">Spring (Mar–May)</option><option value="Winter">Winter (Dec only)</option>
+    </select></div>
+  <div class="filter-group"><label class="filter-label">Period of Day</label>
+    <select class="filter-select" id="f-period" onchange="applyFilters()">
+      <option value="all">All Periods</option><option value="Morning">Morning (6–11)</option><option value="Afternoon">Afternoon (12–17)</option><option value="Evening">Evening (18–21)</option><option value="Night">Night (22–5)</option>
+    </select></div>
+  <div class="filter-group"><label class="filter-label">Age Group</label>
+    <select class="filter-select" id="f-agegroup" onchange="applyFilters()">
+      <option value="all">All Ages</option><option value="Young">Young (12–25)</option><option value="Adult">Adult (26–60)</option><option value="Senior">Senior (61+)</option>
+    </select></div>
+  <hr class="filter-divider">
+  <div class="sidebar-title">Fleet Summary</div>
+  <div class="sidebar-stat"><div class="ss-label">Filtered Trips</div><div class="ss-value" id="qs-trips">1.30M</div></div>
+  <div class="sidebar-stat"><div class="ss-label">Subscriber Rate</div><div class="ss-value" id="qs-subrate">85.9%</div></div>
+  <div class="sidebar-stat"><div class="ss-label">Avg Duration</div><div class="ss-value" id="qs-dur">16.0 min</div></div>
+  <div class="sidebar-stat"><div class="ss-label">Active Bikes</div><div class="ss-value">19,231</div></div>
+</aside>
+<main class="main">
+<!-- PAGE 1 -->
+<section class="page active" id="page-0">
+  <div class="page-header"><h2>Executive Overview</h2><p>System-wide performance, demand patterns &amp; operational summary</p></div>
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="kpi-icon">🚴</div><div class="kpi-label">Total Trips</div><div class="kpi-value" id="kv-trips">1.30M</div><div class="kpi-trend">↑ Peak in Summer</div><div class="kpi-context">Across all user types &amp; seasons</div></div>
+    <div class="kpi-card orange"><div class="kpi-icon">⏱</div><div class="kpi-label">Avg Duration</div><div class="kpi-value" id="kv-dur">16.0 min</div><div class="kpi-context">Weekends 30% longer than weekdays</div></div>
+    <div class="kpi-card"><div class="kpi-icon">📏</div><div class="kpi-label">Avg Distance</div><div class="kpi-value" id="kv-dist">1.77 km</div><div class="kpi-context">Customers ride farther than subscribers</div></div>
+    <div class="kpi-card orange"><div class="kpi-icon">⚡</div><div class="kpi-label">Avg Speed</div><div class="kpi-value" id="kv-spd">8.77 km/h</div><div class="kpi-context">Within realistic urban cycling range</div></div>
+    <div class="kpi-card green"><div class="kpi-icon">🚲</div><div class="kpi-label">Active Bikes</div><div class="kpi-value">19,231</div><div class="kpi-context">Top 1% carry disproportionate load</div></div>
+    <div class="kpi-card"><div class="kpi-icon">📍</div><div class="kpi-label">Active Stations</div><div class="kpi-value">913</div><div class="kpi-context">Highest density in central Manhattan</div></div>
+  </div>
+  <div class="grid-3">
+    <div class="chart-card span-2"><div class="cc-header"><div class="cc-title">Hourly Demand by User Type</div><div class="cc-sub">Subscriber peaks at 8 AM &amp; 5 PM (commute pattern). Customer demand is flatter and leisure-driven throughout midday.</div></div><canvas id="c-hourly" height="100"></canvas></div>
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">User Type Distribution</div><div class="cc-sub">Subscribers account for 85.9% of all trips</div></div><canvas id="c-usertype" height="130"></canvas></div>
+  </div>
+  <div class="grid-3">
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Seasonal Usage</div><div class="cc-sub">Summer peaks at 450K trips. Winter shows the lowest demand — dataset only covers December; Jan &amp; Feb are outside scope, so the full winter drop is understated.</div></div><canvas id="c-season" height="140"></canvas></div>
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Monthly Ride Trend (Mar–Dec 2019)</div><div class="cc-sub">Dataset covers March to December only. Ridership builds through summer, peaks Jul–Sep, then contracts sharply in December.</div></div><canvas id="c-monthly" height="140"></canvas></div>
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Weekday vs Weekend Comparison</div><div class="cc-sub">Weekday volume is 3× higher. Weekend rides are slower and longer — indicating recreational use.</div></div><canvas id="c-wkd" height="140"></canvas></div>
+  </div>
+  <div class="grid-2-1">
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Period of Day Demand</div><div class="cc-sub">Afternoon (12–17h) is the highest-demand window at 43% of all trips. Night the lowest at 6%.</div></div><canvas id="c-period" height="90"></canvas></div>
+    <div class="insights-panel"><h3>Key Insights</h3>
+      <div class="insight-item"><div class="insight-dot"></div><p>Weekday commuting drives ~75% of total system demand</p></div>
+      <div class="insight-item"><div class="insight-dot"></div><p>Summer ridership is 3× higher than December; Jan–Feb data not in dataset</p></div>
+      <div class="insight-item"><div class="insight-dot"></div><p>Customers take 2.5× longer rides at 34% lower speed than subscribers</p></div>
+      <div class="insight-item"><div class="insight-dot"></div><p>Hour 17 (5 PM) is peak demand — 126K trips in a single hour</p></div>
+      <div class="insight-item"><div class="insight-dot"></div><p>Afternoon window accounts for 43% of all daily trips</p></div>
+    </div>
+  </div>
+</section>
+<!-- PAGE 2 -->
+<section class="page" id="page-1">
+  <div class="page-header"><h2>Station Intelligence</h2><p>Infrastructure analysis, route planning &amp; station-level mobility flows</p></div>
+  <div class="grid-2">
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Top 20 Start Stations by Trip Volume</div><div class="cc-sub">Business district stations dominate departures. Pershing Square North leads with 9,761 trips.</div></div><div style="height:340px;overflow-y:auto;"><canvas id="c-topstart"></canvas></div></div>
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Top 10 End Stations — Subscribers vs Customers</div><div class="cc-sub">Subscriber destinations: office &amp; transit hubs (Midtown). Customer destinations: Central Park &amp; riverside landmarks.</div></div><div style="height:340px;overflow-y:auto;"><canvas id="c-endstations"></canvas></div></div>
+  </div>
+  <div class="grid-3-2">
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Top 20 Station Pairs (Origin → Destination)</div><div class="cc-sub">Busiest corridors ranked by trip count, with average duration &amp; distance</div></div>
+      <div style="overflow-y:auto;max-height:300px;"><table class="data-table"><thead><tr><th>#</th><th>Origin</th><th>Destination</th><th>Trips</th><th>Avg Duration</th><th>Avg Dist</th></tr></thead><tbody id="tb-pairs"></tbody></table></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="chart-card"><div class="cc-header"><div class="cc-title">Round Trip Ratio — Subscriber vs Customer</div><div class="cc-sub">Customers: 5.30% round-trip rate vs 1.61% for Subscribers — 3.3× more recreational behavior.</div></div><canvas id="c-roundtrip" height="110"></canvas></div>
+      <div class="insights-panel"><h3>Station Insights</h3>
+        <div class="insight-item"><div class="insight-dot"></div><p>Pershing Square North is #1 with 9,761 departures &amp; 9,263 arrivals</p></div>
+        <div class="insight-item"><div class="insight-dot"></div><p>Customer hotspots cluster near Central Park &amp; Hudson River</p></div>
+        <div class="insight-item"><div class="insight-dot"></div><p>Round trips are 3.3× more common among casual customers</p></div>
+        <div class="insight-item"><div class="insight-dot"></div><p>Top corridors reveal key commuter routes needing priority rebalancing</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- PAGE 3 -->
+<section class="page" id="page-2">
+  <div class="page-header"><h2>User Behavior Analytics</h2><p>Demographics, rider segmentation &amp; mobility behavior patterns</p></div>
+  <div class="grid-3">
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Avg Trip Duration by Age Group</div><div class="cc-sub">Young (12–25): 17.1 min · Adult (26–60): 16.0 min · Senior (61+): 14.1 min. Bars = avg duration; line = trip volume.</div></div><canvas id="c-agegroup" height="170"></canvas></div>
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Gender Behavior Comparison</div><div class="cc-sub">Males ride faster (9.22 vs 8.26 km/h). Females ride 19% longer (16.5 vs 13.9 min avg duration).</div></div><canvas id="c-gender" height="170"></canvas></div>
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Gender Distribution</div><div class="cc-sub">Male riders: 72% · Female: 25% · Unknown: 8% of all identified trips</div></div><canvas id="c-genderdist" height="170"></canvas></div>
+  </div>
+  <div class="grid-2">
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Subscriber vs Customer — KPI Comparison</div><div class="cc-sub">Subscribers: shorter, faster, efficiency-driven rides. Customers: slower, longer, exploratory leisure trips.</div></div><canvas id="c-userkpi" height="160"></canvas></div>
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Season × User Type — Trip Matrix</div><div class="cc-sub">Customer activity spikes sharply in Summer. Subscribers stay the dominant segment year-round.</div></div><canvas id="c-seasonuser" height="160"></canvas></div>
+  </div>
+  <div class="grid-2-1">
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Rush Hour Demand by User Type</div><div class="cc-sub">Subscribers spike at 8 AM &amp; 5 PM (commuter pattern). Customers spread more evenly through midday hours.</div></div><canvas id="c-rushhour" height="115"></canvas></div>
+    <div class="insights-panel"><h3>Behavior Insights</h3>
+      <div class="insight-item"><div class="insight-dot"></div><p>Subscribers are commute-oriented: shorter, faster, peak at commute hours</p></div>
+      <div class="insight-item"><div class="insight-dot"></div><p>Customers take 2.5× longer and 34% slower rides on average</p></div>
+      <div class="insight-item"><div class="insight-dot"></div><p>Young riders (12–25) average the longest trip duration at 17.1 min</p></div>
+      <div class="insight-item"><div class="insight-dot"></div><p>Females ride 19% longer than males (988 vs 832 sec avg)</p></div>
+      <div class="insight-item"><div class="insight-dot"></div><p>Customer seasonal surge is concentrated in Summer (Jun–Aug)</p></div>
+    </div>
+  </div>
+</section>
+<!-- PAGE 4 -->
+<section class="page" id="page-3">
+  <div class="page-header"><h2>Operations &amp; Maintenance</h2><p>Fleet health monitoring, anomaly detection &amp; maintenance prioritization</p></div>
+  <div class="kpi-row-3">
+    <div class="kpi-card orange"><div class="kpi-icon">⚠️</div><div class="kpi-label">Top Overutilized Bikes</div><div class="kpi-value">20</div><div class="kpi-context">Highest: Bike #40515 at 823 hrs — immediate maintenance priority</div></div>
+    <div class="kpi-card"><div class="kpi-icon">🔍</div><div class="kpi-label">Noise Records Detected</div><div class="kpi-value">688</div><div class="kpi-context">Invalid ages, speed anomalies &amp; missing station names removed</div></div>
+    <div class="kpi-card green"><div class="kpi-icon">✅</div><div class="kpi-label">Clean Record Rate</div><div class="kpi-value">99.95%</div><div class="kpi-context">Only 0.05% flagged — pipeline quality confirmed</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Top 20 Bikes by Total Usage Hours</div><div class="cc-sub">Ranked by accumulated hours in service. High-utilization bikes carry disproportionate mechanical stress and require prioritized inspection.</div></div><div style="height:340px;overflow-y:auto;"><canvas id="c-bikeutil"></canvas></div></div>
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Noise Detection Breakdown</div><div class="cc-sub">95.1% of anomalies originate from invalid age records (under 12 or over 100). Speed and station name anomalies are rare.</div></div>
+      <canvas id="c-noise" height="160"></canvas>
+      <div style="margin-top:14px;"><table class="data-table"><thead><tr><th>Noise Type</th><th>Count</th><th>Share</th></tr></thead><tbody>
+        <tr><td>Invalid Age (&gt;100 or &lt;12)</td><td><strong>654</strong></td><td>95.1%</td></tr>
+        <tr><td>Missing Station Name</td><td><strong>33</strong></td><td>4.8%</td></tr>
+        <tr><td>Over Speed (&gt;40 km/h)</td><td><strong>1</strong></td><td>0.1%</td></tr>
+        <tr><td>Short Trip (&lt;60s)</td><td><strong>0</strong></td><td>0.0%</td></tr>
+        <tr><td>Missing Bike ID</td><td><strong>0</strong></td><td>0.0%</td></tr>
+      </tbody></table></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Maintenance Risk Table — Top 20 Bikes</div><div class="cc-sub">Risk scored by hours in use: Critical &gt;700h · High &gt;550h · Medium &gt;450h · Low otherwise</div></div>
+      <div style="overflow-y:auto;max-height:270px;"><table class="data-table"><thead><tr><th>#</th><th>Bike ID</th><th>Trips</th><th>Hours in Use</th><th>Risk Level</th></tr></thead><tbody id="tb-bikerisk"></tbody></table></div>
+    </div>
+    <div class="chart-card"><div class="cc-header"><div class="cc-title">Seasonal Demand &amp; Operational Planning</div>
+      <div class="cc-sub">Bars = total trips · Line = avg duration (min).<br>
+        <strong>Summer:</strong> Peak (450K) — maximize fleet, daily rebalancing.<br>
+        <strong>Autumn:</strong> 2nd (400K) — sustain ops, begin pre-winter checks.<br>
+        <strong>Spring:</strong> Recovery (300K) — post-winter maintenance rollout.<br>
+        <strong>Winter (Dec only):</strong> Lowest (150K) — prime fleet servicing window. Note: Jan &amp; Feb outside dataset; real winter depth likely deeper.
+      </div></div>
+      <canvas id="c-opseason" height="150"></canvas>
+    </div>
+  </div>
+</section>
+</main>
+</div>
+<footer class="footer">Data Source: NYC Citi Bike Open Data · Apache Spark Processing Pipeline · 2019</footer>
+<script>
+const BLUE='#003DA5',ORANGE='#F26522',GREEN='#1DB87E',GRAY='#CBD5E0',TEXT='#4A5878';
+const a=(h,o)=>{const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return`rgba(${r},${g},${b},${o})`;};
+const BF={family:"'DM Sans',sans-serif",size:11};
+const hS=()=>({ticks:{color:TEXT,font:BF,maxRotation:0},grid:{color:'rgba(0,0,0,0.04)'}});
+const vS=()=>({ticks:{color:TEXT,font:BF},grid:{color:'rgba(0,0,0,0.06)',drawBorder:false}});
+const DS={
+  sub_trips:1115562,cus_trips:183750,
+  kpi_all:{trips:1299312,dur:960.32,dist:1.7748,spd:8.7682},
+  kpi_sub:{trips:1115562,dur:788.21,dist:1.7315,spd:9.1958},
+  kpi_cus:{trips:183750,dur:2005.22,dist:2.0377,spd:6.1716},
+  hourly_sub:[10406,6510,4044,2549,3100,9914,31760,67144,110443,73280,47648,53853,60385,66059,69003,71337,80285,110514,91996,56939,36628,24695,17112,9958],
+  hourly_cus:[2241,1429,971,547,473,581,1308,2947,5271,6236,9012,13921,15939,17757,19518,19598,17981,16064,12877,7145,4618,3247,2461,1608],
+  monthly_labels:['Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  monthly_data:[99942,99944,99941,149932,149924,149924,149933,149928,99947,49972],
+  season_labels:['Summer','Autumn','Spring','Winter'],
+  season_trips:[449780,399808,299827,149897],
+  season_dur:[1018.31,958.75,939.94,831.23],
+  season_months:{Summer:['Jun','Jul','Aug'],Autumn:['Sep','Oct','Nov'],Spring:['Mar','Apr','May'],Winter:['Dec']},
+  wkd_dur:[892.57,1162.93],wkd_dist:[1.7632,1.8095],wkd_spd:[9.0517,7.9202],
+  period_labels:['Afternoon','Morning','Evening','Night'],
+  period_data:[564440,422823,238145,73904],
+  period_hours:{Morning:[6,7,8,9,10,11],Afternoon:[12,13,14,15,16,17],Evening:[18,19,20,21],Night:[22,23,0,1,2,3,4,5]},
+  topstart:[['Pershing Square North',9761],['8 Ave & W 31 St',8001],['E 17 St & Broadway',7524],['Broadway & E 22 St',7041],['W 21 St & 6 Ave',7011],['Broadway & E 14 St',6973],['West St & Chambers St',6731],['Broadway & W 60 St',6596],['Christopher St & Greenwich',6557],['12 Ave & W 40 St',6446],['W 20 St & 11 Ave',6105],['Lafayette St & E 8 St',5810],['W 41 St & 8 Ave',5787],['8 Ave & W 33 St',5758],['Broadway & W 25 St',5612],['W 31 St & 7 Ave',5553],['E 13 St & Ave A',5539],['E 47 St & Park Ave',5417],['W 38 St & 8 Ave',5385],['South End Ave & Liberty St',5379]],
+  sub_ends_labels:['Pershing Sq North','Broadway & E 22 St','E 17 St & Broadway','8 Ave & W 31 St','W 21 St & 6 Ave','Broadway & E 14 St','Lafayette & E 8 St','West St & Chambers','Christopher & Greenwich','E 47 St & Park Ave'],
+  sub_ends_data:[9263,7372,7113,7053,6727,6478,5833,5753,5673,5577],
+  cus_ends_labels:['5 Ave & E 88 St','Central Park S & 6 Ave','5 Ave & E 73 St','Central Pk W & W 72','12 Ave & W 40 St','Centre & Chambers St','West St & Chambers','Broadway & W 60 St','W 34 St & 11 Ave','Grand Army Plaza'],
+  cus_ends_data:[2363,2336,2155,2066,1984,1952,1864,1672,1658,1589],
+  pairs:[['E 7 St & Ave A','Cooper Sq & Astor Pl',585,241,0.69],['Central Park S & 6 Ave','5 Ave & E 88 St',443,1741,2.38],['Yankee Ferry Terminal','Soissons Landing',411,3691,0.62],['Vesey Pl & River Ter.','N Moore & Greenwich',401,339,0.76],['Soissons Landing','Picnic Point',379,2043,1.19],['Soissons Landing','Yankee Ferry Terminal',371,1674,0.62],['Picnic Point','Soissons Landing',367,1678,1.19],['12 Ave & W 40 St','West St & Chambers',350,1374,4.90],['E 6 St & Ave B','Cooper Sq & Astor Pl',347,367,0.93],['McGuinness & Eagle','Vernon Blvd & 50 Ave',346,363,0.76],['Pershing Square N','W 33 St & 7 Ave',334,520,1.13],['Pershing Square N','E 24 St & Park Ave S',327,444,1.40],['W 22 St & 10 Ave','W 22 St & 8 Ave',325,205,0.51],['N Moore & Greenwich','Vesey Pl & River Ter.',319,356,0.76],['E 13 St & Ave A','Broadway & E 14 St',312,401,1.01],['Pier 40 Hudson River','West St & Chambers',305,507,1.14],['Richardson & N Henry','Graham & Conselyea',293,190,0.48],['West Thames St','South End & Liberty',293,173,0.37],['N 6 St & Bedford','S 4 St & Wythe',291,346,0.81],['Yankee Ferry Terminal','Picnic Point',287,1454,0.74]],
+  sub_oneway:1097602,sub_round:17960,cus_oneway:174013,cus_round:9737,
+  age_labels:['Young (12–25)','Adult (26–60)','Senior (61+)'],
+  age_trips:[147161,1089222,62929],age_dur:[1027.94,957.82,845.4],
+  male:{trips:885821,spd:9.2156,dur:831.77,dist:1.7327},
+  female:{trips:312113,spd:8.2607,dur:988.07,dist:1.83},
+  gd_labels:['Male','Female','Unknown'],gd_data:[885821,312113,101378],
+  seasonuser_seasons:['Spring','Summer','Autumn','Winter'],
+  seasonuser_sub:[268625,372891,334963,139083],
+  seasonuser_cus:[31202,76889,64845,10814],
+  bikes:[[40515,29,823.39],[25073,47,731.21],[32225,100,682.54],[21580,56,642.64],[26495,66,614.00],[15876,98,609.65],[21541,62,576.48],[27447,91,561.55],[17509,47,537.59],[32295,82,503.08],[15400,63,503.01],[24931,77,480.14],[29730,67,442.03],[18174,56,421.54],[20584,66,414.38],[18112,33,407.96],[38179,74,406.76],[25720,82,402.79],[21142,46,399.12],[28660,3,381.42]],
+  noise_labels:['Invalid Age','Missing Station','Over Speed'],noise_data:[654,33,1]
+};
+let F={usertype:'all',gender:'all',season:'all',period:'all',agegroup:'all'};
+let CH={};
+function dc(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
+function getKPI(){if(F.usertype==='Subscriber')return DS.kpi_sub;if(F.usertype==='Customer')return DS.kpi_cus;return DS.kpi_all;}
+function updateKPIs(){
+  const k=getKPI();
+  document.getElementById('kv-trips').textContent=k.trips>=1e6?(k.trips/1e6).toFixed(2)+'M':(k.trips/1000).toFixed(0)+'K';
+  document.getElementById('kv-dur').textContent=(k.dur/60).toFixed(1)+' min';
+  document.getElementById('kv-dist').textContent=k.dist.toFixed(2)+' km';
+  document.getElementById('kv-spd').textContent=k.spd.toFixed(2)+' km/h';
+  document.getElementById('qs-trips').textContent=k.trips>=1e6?(k.trips/1e6).toFixed(2)+'M':(k.trips/1000).toFixed(0)+'K';
+  document.getElementById('qs-dur').textContent=(k.dur/60).toFixed(1)+' min';
+  document.getElementById('qs-subrate').textContent=F.usertype==='Subscriber'?'100%':F.usertype==='Customer'?'0%':'85.9%';
+}
+function getHourlyData(){
+  let sub=[...DS.hourly_sub],cus=[...DS.hourly_cus];
+  if(F.period!=='all'){const ph=DS.period_hours[F.period]||[];sub=sub.map((v,i)=>ph.includes(i)?v:0);cus=cus.map((v,i)=>ph.includes(i)?v:0);}
+  if(F.usertype==='Subscriber')cus=cus.map(()=>0);
+  if(F.usertype==='Customer')sub=sub.map(()=>0);
+  return{sub,cus};
+}
+function buildP0(){
+  const{sub,cus}=getHourlyData();
+  dc('c-hourly');
+  CH['c-hourly']=new Chart(document.getElementById('c-hourly'),{type:'line',data:{labels:Array.from({length:24},(_,i)=>i+'h'),datasets:[{label:'Subscriber',data:sub,borderColor:BLUE,backgroundColor:a(BLUE,.1),fill:true,tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:4},{label:'Customer',data:cus,borderColor:ORANGE,backgroundColor:a(ORANGE,.08),fill:true,tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toLocaleString()} trips`}}},scales:{x:hS(),y:{...vS(),ticks:{...vS().ticks,callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}}}}});
+  dc('c-usertype');
+  CH['c-usertype']=new Chart(document.getElementById('c-usertype'),{type:'doughnut',data:{labels:['Subscriber','Customer'],datasets:[{data:[F.usertype==='Customer'?0:DS.sub_trips,F.usertype==='Subscriber'?0:DS.cus_trips],backgroundColor:[BLUE,ORANGE],borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:true,cutout:'68%',plugins:{legend:{position:'bottom',labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.label}: ${c.parsed.toLocaleString()}`}}}}});
+  let sL=[...DS.season_labels],sT=[...DS.season_trips];
+  if(F.season!=='all'){const si=sL.indexOf(F.season);if(si>=0){sL=[sL[si]];sT=[sT[si]];}}
+  dc('c-season');
+  CH['c-season']=new Chart(document.getElementById('c-season'),{type:'bar',data:{labels:sL,datasets:[{data:sT,backgroundColor:[ORANGE,BLUE,GREEN,a(BLUE,.45)].slice(0,sL.length),borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.parsed.y.toLocaleString()} trips`}}},scales:{x:hS(),y:{...vS(),ticks:{...vS().ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+  let mL=[...DS.monthly_labels],mD=[...DS.monthly_data];
+  if(F.season!=='all'){const sm=DS.season_months[F.season]||[];const idx=mL.map((l,i)=>sm.includes(l)?i:-1).filter(i=>i>=0);mL=idx.map(i=>mL[i]);mD=idx.map(i=>mD[i]);}
+  dc('c-monthly');
+  CH['c-monthly']=new Chart(document.getElementById('c-monthly'),{type:'line',data:{labels:mL,datasets:[{data:mD,borderColor:ORANGE,backgroundColor:a(ORANGE,.1),fill:true,tension:.4,borderWidth:2.5,pointRadius:3,pointBackgroundColor:ORANGE}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.parsed.y.toLocaleString()} trips`}}},scales:{x:hS(),y:{...vS(),ticks:{...vS().ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+  dc('c-wkd');
+  CH['c-wkd']=new Chart(document.getElementById('c-wkd'),{type:'bar',data:{labels:['Avg Duration (min)','Avg Distance (km)','Avg Speed (km/h)'],datasets:[{label:'Weekday',data:[+(DS.wkd_dur[0]/60).toFixed(1),DS.wkd_dist[0],DS.wkd_spd[0]],backgroundColor:BLUE,borderRadius:5},{label:'Weekend',data:[+(DS.wkd_dur[1]/60).toFixed(1),DS.wkd_dist[1],DS.wkd_spd[1]],backgroundColor:ORANGE,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF}},scales:{x:hS(),y:vS()}}});
+  let pL=[...DS.period_labels],pD=[...DS.period_data];
+  const pC=[BLUE,ORANGE,GREEN,a(BLUE,.45)];
+  if(F.period!=='all'){const pi=pL.indexOf(F.period);if(pi>=0){pL=[pL[pi]];pD=[pD[pi]];}}
+  dc('c-period');
+  CH['c-period']=new Chart(document.getElementById('c-period'),{type:'bar',indexAxis:'y',data:{labels:pL,datasets:[{data:pD,backgroundColor:F.period==='all'?pC:[pC[DS.period_labels.indexOf(F.period)]||BLUE],borderRadius:6}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.parsed.x.toLocaleString()} trips`}}},scales:{x:{...hS(),ticks:{...hS().ticks,callback:v=>(v/1000).toFixed(0)+'k'}},y:vS()}}});
+}
+function buildP1(){
+  dc('c-topstart');const tsEl=document.getElementById('c-topstart');tsEl.style.height=(DS.topstart.length*28)+'px';tsEl.style.width='100%';
+  CH['c-topstart']=new Chart(tsEl,{type:'bar',indexAxis:'y',data:{labels:DS.topstart.map(d=>d[0]),datasets:[{data:DS.topstart.map(d=>d[1]),backgroundColor:DS.topstart.map((_,i)=>i===0?ORANGE:a(BLUE,.72)),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.parsed.x.toLocaleString()} trips`}}},scales:{x:{...hS(),ticks:{...hS().ticks,callback:v=>(v/1000).toFixed(1)+'k'}},y:{ticks:{color:TEXT,font:{family:"'DM Sans',sans-serif",size:10},autoSkip:false},grid:{display:false}}}}});
+  dc('c-endstations');const esEl=document.getElementById('c-endstations');esEl.style.height=(DS.sub_ends_labels.length*40)+'px';esEl.style.width='100%';
+  let esDs=[];
+  if(F.usertype!=='Customer')esDs.push({label:'Subscriber',data:DS.sub_ends_data,backgroundColor:a(BLUE,.82),borderRadius:4});
+  if(F.usertype!=='Subscriber')esDs.push({label:'Customer',data:DS.cus_ends_data,backgroundColor:a(ORANGE,.82),borderRadius:4});
+  if(esDs.length===0)esDs=[{label:'All',data:DS.sub_ends_data,backgroundColor:a(BLUE,.5),borderRadius:4}];
+  CH['c-endstations']=new Chart(esEl,{type:'bar',indexAxis:'y',data:{labels:DS.sub_ends_labels,datasets:esDs},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.x.toLocaleString()} trips`}}},scales:{x:{...hS(),ticks:{...hS().ticks,callback:v=>(v/1000).toFixed(1)+'k'}},y:{ticks:{color:TEXT,font:{family:"'DM Sans',sans-serif",size:10},autoSkip:false},grid:{display:false}}}}});
+  const tb=document.getElementById('tb-pairs');tb.innerHTML='';
+  DS.pairs.forEach((r,i)=>{const rc=i===0?'r1':i===1?'r2':i===2?'r3':'rn';const m=Math.floor(r[3]/60),s=r[3]%60;tb.innerHTML+=`<tr><td><span class="rank-badge ${rc}">${i+1}</span></td><td>${r[0]}</td><td>${r[1]}</td><td><strong>${r[2]}</strong></td><td>${m}m ${s}s</td><td>${r[4]} km</td></tr>`;});
+  let so=DS.sub_oneway,sr=DS.sub_round,co=DS.cus_oneway,cr=DS.cus_round;
+  if(F.usertype==='Subscriber'){co=0;cr=0;}if(F.usertype==='Customer'){so=0;sr=0;}
+  const sT=so+sr,cT=co+cr;const srP=sT>0?+(sr/sT*100).toFixed(1):0;const crP=cT>0?+(cr/cT*100).toFixed(1):0;
+  dc('c-roundtrip');
+  CH['c-roundtrip']=new Chart(document.getElementById('c-roundtrip'),{type:'bar',indexAxis:'y',data:{labels:['Subscriber','Customer'],datasets:[{label:'One-Way %',data:[sT>0?+(100-srP).toFixed(1):0,cT>0?+(100-crP).toFixed(1):0],backgroundColor:[a(BLUE,.7),a(ORANGE,.7)],borderRadius:0,stack:'s'},{label:'Round Trip %',data:[srP,crP],backgroundColor:[BLUE,ORANGE],borderRadius:0,stack:'s'}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.x.toFixed(2)}%`}}},scales:{x:{...hS(),stacked:true,max:100,ticks:{...hS().ticks,callback:v=>v+'%'}},y:{...vS(),stacked:true}}}});
+}
+function buildP2(){
+  let aL=[...DS.age_labels],aDur=DS.age_dur.map(d=>+(d/60).toFixed(1)),aT=DS.age_trips.map(d=>+(d/1000).toFixed(1));
+  if(F.agegroup!=='all'){const ai=['Young','Adult','Senior'].findIndex(x=>F.agegroup.startsWith(x));if(ai>=0){aL=[aL[ai]];aDur=[aDur[ai]];aT=[aT[ai]];}}
+  dc('c-agegroup');
+  CH['c-agegroup']=new Chart(document.getElementById('c-agegroup'),{type:'bar',data:{labels:aL,datasets:[{label:'Avg Duration (min)',data:aDur,backgroundColor:[ORANGE,BLUE,GREEN].slice(0,aL.length),borderRadius:7,yAxisID:'y'},{label:'Trips (K)',data:aT,type:'line',borderColor:a(BLUE,.7),backgroundColor:'transparent',borderWidth:2,tension:.3,pointRadius:4,pointBackgroundColor:BLUE,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF}},scales:{x:hS(),y:{...vS(),position:'left',title:{display:true,text:'Avg Duration (min)',color:TEXT,font:{size:10}}},y1:{...vS(),position:'right',grid:{display:false},title:{display:true,text:'Trips (K)',color:TEXT,font:{size:10}}}}}});
+  let gDs=[];
+  if(F.gender!=='Female')gDs.push({label:'Male',data:[DS.male.spd,+(DS.male.dur/60).toFixed(1),DS.male.dist],backgroundColor:BLUE,borderRadius:5});
+  if(F.gender!=='Male')gDs.push({label:'Female',data:[DS.female.spd,+(DS.female.dur/60).toFixed(1),DS.female.dist],backgroundColor:ORANGE,borderRadius:5});
+  if(gDs.length===0)gDs=[{label:'All',data:[8.77,16.0,1.77],backgroundColor:a(BLUE,.6),borderRadius:5}];
+  dc('c-gender');
+  CH['c-gender']=new Chart(document.getElementById('c-gender'),{type:'bar',data:{labels:['Avg Speed (km/h)','Avg Duration (min)','Avg Distance (km)'],datasets:gDs},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF}},scales:{x:hS(),y:vS()}}});
+  let gdL=[...DS.gd_labels],gdD=[...DS.gd_data];
+  if(F.gender==='Male'){gdL=['Male'];gdD=[885821];}else if(F.gender==='Female'){gdL=['Female'];gdD=[312113];}
+  dc('c-genderdist');
+  CH['c-genderdist']=new Chart(document.getElementById('c-genderdist'),{type:'doughnut',data:{labels:gdL,datasets:[{data:gdD,backgroundColor:[BLUE,ORANGE,a(GRAY,0.9)].slice(0,gdL.length),borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.label}: ${c.parsed.toLocaleString()}`}}}}});
+  let ukDs=[];
+  if(F.usertype!=='Customer')ukDs.push({label:'Subscriber',data:[+(DS.kpi_sub.dur/60).toFixed(1),DS.kpi_sub.dist,DS.kpi_sub.spd],backgroundColor:BLUE,borderRadius:6});
+  if(F.usertype!=='Subscriber')ukDs.push({label:'Customer',data:[+(DS.kpi_cus.dur/60).toFixed(1),DS.kpi_cus.dist,DS.kpi_cus.spd],backgroundColor:ORANGE,borderRadius:6});
+  if(ukDs.length===0)ukDs=[{label:'All',data:[16.0,1.77,8.77],backgroundColor:a(BLUE,.5),borderRadius:6}];
+  dc('c-userkpi');
+  CH['c-userkpi']=new Chart(document.getElementById('c-userkpi'),{type:'bar',data:{labels:['Avg Duration (min)','Avg Distance (km)','Avg Speed (km/h)'],datasets:ukDs},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF}},scales:{x:hS(),y:vS()}}});
+  let suL=[...DS.seasonuser_seasons],suS=[...DS.seasonuser_sub],suC=[...DS.seasonuser_cus];
+  if(F.season!=='all'){const si=suL.indexOf(F.season);if(si>=0){suL=[suL[si]];suS=[suS[si]];suC=[suC[si]];}}
+  let suDs=[];
+  if(F.usertype!=='Customer')suDs.push({label:'Subscriber',data:suS,backgroundColor:a(BLUE,.85),borderRadius:6});
+  if(F.usertype!=='Subscriber')suDs.push({label:'Customer',data:suC,backgroundColor:a(ORANGE,.85),borderRadius:6});
+  if(suDs.length===0)suDs=[{label:'Total',data:suS.map((v,i)=>v+suC[i]),backgroundColor:a(BLUE,.5),borderRadius:6}];
+  dc('c-seasonuser');
+  CH['c-seasonuser']=new Chart(document.getElementById('c-seasonuser'),{type:'bar',data:{labels:suL,datasets:suDs},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toLocaleString()}`}}},scales:{x:hS(),y:{...vS(),ticks:{...vS().ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+  const{sub:rhS,cus:rhC}=getHourlyData();
+  let rhDs=[];
+  if(F.usertype!=='Customer')rhDs.push({label:'Subscriber',data:rhS,borderColor:BLUE,backgroundColor:a(BLUE,.08),fill:true,tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:3});
+  if(F.usertype!=='Subscriber')rhDs.push({label:'Customer',data:rhC,borderColor:ORANGE,backgroundColor:a(ORANGE,.08),fill:true,tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:3});
+  if(rhDs.length===0)rhDs=[{label:'All',data:DS.hourly_sub.map((v,i)=>v+DS.hourly_cus[i]),borderColor:BLUE,backgroundColor:a(BLUE,.06),fill:true,tension:.4,borderWidth:2,pointRadius:0}];
+  dc('c-rushhour');
+  CH['c-rushhour']=new Chart(document.getElementById('c-rushhour'),{type:'line',data:{labels:Array.from({length:24},(_,i)=>i+'h'),datasets:rhDs},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF}},scales:{x:hS(),y:{...vS(),ticks:{...vS().ticks,callback:v=>(v/1000).toFixed(0)+'k'}}}}});
+}
+function buildP3(){
+  dc('c-bikeutil');const buEl=document.getElementById('c-bikeutil');buEl.style.height=(DS.bikes.length*28)+'px';buEl.style.width='100%';
+  CH['c-bikeutil']=new Chart(buEl,{type:'bar',indexAxis:'y',data:{labels:DS.bikes.map(d=>'#'+d[0]),datasets:[{data:DS.bikes.map(d=>d[2]),backgroundColor:DS.bikes.map((_,i)=>i===0?ORANGE:i<5?a(ORANGE,.6):a(BLUE,.65)),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{bodyFont:BF,callbacks:{label:c=>`${c.parsed.x.toFixed(1)} hours in use`}}},scales:{x:{...hS(),title:{display:true,text:'Total Hours in Use',color:TEXT,font:BF}},y:{ticks:{color:TEXT,font:{family:"'DM Sans',sans-serif",size:10},autoSkip:false},grid:{display:false}}}}});
+  dc('c-noise');
+  CH['c-noise']=new Chart(document.getElementById('c-noise'),{type:'doughnut',data:{labels:DS.noise_labels,datasets:[{data:DS.noise_data,backgroundColor:[ORANGE,BLUE,GREEN],borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:true,cutout:'62%',plugins:{legend:{position:'bottom',labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF}}}});
+  const tb=document.getElementById('tb-bikerisk');tb.innerHTML='';
+  DS.bikes.forEach((r,i)=>{const rc=i===0?'r1':i===1?'r2':i===2?'r3':'rn';const risk=r[2]>700?'🔴 Critical':r[2]>550?'🟠 High':r[2]>450?'🟡 Medium':'🟢 Low';tb.innerHTML+=`<tr><td><span class="rank-badge ${rc}">${i+1}</span></td><td><strong>#${r[0]}</strong></td><td>${r[1]}</td><td>${r[2].toFixed(1)}h</td><td>${risk}</td></tr>`;});
+  let opL=[...DS.season_labels],opT=[...DS.season_trips],opD=DS.season_dur.map(d=>+(d/60).toFixed(1));
+  const opC=[ORANGE,BLUE,GREEN,a(BLUE,.45)];
+  if(F.season!=='all'){const si=opL.indexOf(F.season);if(si>=0){opL=[opL[si]];opT=[opT[si]];opD=[opD[si]];}}
+  dc('c-opseason');
+  CH['c-opseason']=new Chart(document.getElementById('c-opseason'),{type:'bar',data:{labels:opL,datasets:[{label:'Total Trips',data:opT,backgroundColor:F.season==='all'?opC:[opC[DS.season_labels.indexOf(F.season)]||BLUE],borderRadius:6,yAxisID:'y'},{label:'Avg Duration (min)',data:opD,type:'line',borderColor:a(ORANGE,.9),backgroundColor:'transparent',borderWidth:2.5,tension:.4,pointRadius:4,pointBackgroundColor:ORANGE,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{font:BF,color:TEXT,boxWidth:10}},tooltip:{bodyFont:BF}},scales:{x:hS(),y:{...vS(),position:'left',ticks:{...vS().ticks,callback:v=>(v/1000).toFixed(0)+'k'},title:{display:true,text:'Total Trips',color:TEXT,font:BF}},y1:{...vS(),position:'right',grid:{display:false},title:{display:true,text:'Avg Duration (min)',color:TEXT,font:BF}}}}});
+}
+function buildAll(){updateKPIs();buildP0();buildP1();buildP2();buildP3();}
+function showPage(n){document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active',i===n));document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',i===n));}
+function applyFilters(){F.usertype=document.getElementById('f-usertype').value;F.gender=document.getElementById('f-gender').value;F.season=document.getElementById('f-season').value;F.period=document.getElementById('f-period').value;F.agegroup=document.getElementById('f-agegroup').value;buildAll();}
+window.addEventListener('load',()=>buildAll());
+window.addEventListener('resize',()=>buildAll());
+</script>
+</body>
+</html>
