@@ -3,7 +3,7 @@
 An interactive, multi-page business intelligence dashboard built from the NYC Citi Bike 2019 dataset using Apache Spark for large-scale data processing and a custom HTML/CSS/JS frontend for visualization.
 
 ## 🔗 Live Dashboard
-👉 [View Dashboard](https://yourusername.github.io/citibike-dashboard)
+👉 [View Dashboard]((https://alialnaggar.github.io/CitiBike_Bigdata_Project/))
 
 ## 📓 Data Processing Notebook
 👉 [View on Google Colab](https://colab.research.google.com/drive/1x0aJNixBuw6rezrlGRm08PUWb28ZrF0s?usp=sharing)
